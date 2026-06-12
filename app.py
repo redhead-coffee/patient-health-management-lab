@@ -1,21 +1,21 @@
 from fastapi import FastAPI, Path, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, computed_field
-from typing import List, Dict, Annotated, Literal
+from typing import List, Dict, Annotated, Literal, Optional
 import json
 
 app = FastAPI()
 
 class Patient(BaseModel):
-    id: Annotated[str, Field(..., description='patient ID required', example='P001')]
-    name: Annotated[str, Field(..., description='patient Name required', example='Jyanti Aich')]
-    city: Annotated[str, Field(..., description='patient City required', example='Kolkata')]
-    age: Annotated[int, Field(..., gt=0, lt=99,description='patient Age required', example=30)]
+    id: Annotated[str, Field(..., description='patient ID required', examples=['P001'])]
+    name: Annotated[str, Field(..., description='patient Name required', examples=['Jyanti Aich'])]
+    city: Annotated[str, Field(..., description='patient City required', examples=['Kolkata'])]
+    age: Annotated[int, Field(..., gt=0, lt=99,description='patient Age required', examples=[30])]
     gender: Annotated[Literal['male','female','others'], Field(..., description='patient Gender required', examples=['male','female','others'])]
-    height: Annotated[float, Field(..., gt=0, description='patient Height required in meters', example=1.75)]
-    weight: Annotated[float, Field(..., gt=0, description='patient Weight required in kg', example=70.0)]
-    #bmi: float
-    #verdict: str
+    height: Annotated[float, Field(..., gt=0, description='patient Height required in meters', examples=[1.75])]
+    weight: Annotated[float, Field(..., gt=0, description='patient Weight required in kg', examples=[70.0])]
+    #do not need here: bmi: float
+    #do not need here: verdict: str
 
     #for bmi calculation we can use computed_field decorator to calculate bmi based on height and weight fields.
     @computed_field
@@ -36,6 +36,19 @@ class Patient(BaseModel):
             return 'Normal weight'
         else:
             return 'Obese'
+        
+#Updating patient data, We can use Optional fields in the PatientUpdate model to allow partial updates
+class PatientUpdate(BaseModel):
+    name: Annotated[Optional[str], Field(default=None)]
+    City: Annotated[Optional[str], Field(default=None,)]
+    age: Annotated[Optional[int], Field(default=None, gt=0, lt=99)]
+    gender: Annotated[Optional[Literal['male','female','others']], Field(default=None)]
+    height: Annotated[Optional[float], Field(default=None, gt=0)]
+    weight: Annotated[Optional[float], Field(default=None, gt=0)]
+
+
+
+
 
 def load_data():
     with open('patient.json', 'r') as f:
@@ -43,6 +56,7 @@ def load_data():
     return data
 
 def save_data(data):
+    print("Saving data...")
     with open('patient.json', 'w') as f:
         json.dump(data, f)
 
@@ -57,7 +71,7 @@ def view():
 
 @app.get('/patient/{patient_id}')
 def view_patient(
-    patient_id: str = Path(..., description='patient ID required', example='P001')
+    patient_id: str = Path(..., description='patient ID required', examples='P001')
 ):
     data = load_data()
 
@@ -112,12 +126,37 @@ def create_patient(patient: Patient):
     #save into JSON file
     save_data(data)
     return JSONResponse(status_code=201, content={"message": "Patient created successfully"})
+
+
+@app.put('/edit/{patient_id}')
+def update_patient(
+    patient_id: str,
+    patient_update: PatientUpdate):
+
+    data = load_data()
+    #patient = data.get(patient_id)
+
+    if patient_id not in data:
+        raise HTTPException(status_code=404, detail="Patient not found")
     
+    existing_patient_info = data[patient_id]
 
+    #update the patient data with the provided fields
+    updated_patient_info = patient_update.model_dump(exclude_unset=True)
 
+    for key,value in updated_patient_info.items():
+        existing_patient_info[key] = value
 
+        #existing_patient_info -> pydantic object -> recalute bmi and verdict -> convert to dict -> save to JSON file
+    existing_patient_info['id'] = patient_id 
+    #recalculate bmi and verdict by creating a new Patient object with the updated data   
+    patient_pyd_obj = Patient(**existing_patient_info)
+    #convert the updated Patient object back to a dictionary to save it to the JSON file.
+    existing_patient_info = patient_pyd_obj.model_dump(exclude={'id'})
+    #adding this dict to data dict
+    data[patient_id] = existing_patient_info
 
-    '''data[patient.id] = patient
-    with open('patient.json', 'w') as f:
-        json.dump(data, f)
-    return patient'''
+    #saving data back to JSON file
+    save_data(data)
+
+    return JSONResponse(status_code=200, content={"message": "Patient updated successfully"})
