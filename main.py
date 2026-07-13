@@ -6,7 +6,7 @@ import pickle
 import pandas as pd
 
 # Load the trained model
-with open('bmi_model.pkl', 'rb') as f: #rb means read binary mode because we are loading a binary file
+with open('model\model.pkl', 'rb') as f: #rb means read binary mode because we are loading a binary file
     model = pickle.load(f)
 
 tier_1_cities = ['southwest','southeast']
