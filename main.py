@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Path, HTTPException, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Literal, Annotated
 import pickle
 import pandas as pd
@@ -24,6 +24,13 @@ class UserInput(BaseModel):
     children: Annotated[int, Field(..., ge=0, description='Number of children', examples=[0])]
     smoker: Annotated[Literal['yes', 'no'], Field(..., description='Whether the user smokes', examples=['yes/no'])] 
     region: Annotated[Literal['northeast', 'northwest', 'southeast', 'southwest'], Field(..., description='Region of the user', examples=['northeast'])]
+
+    @field_validator('region')
+    @classmethod
+    def validate_region(cls, v:str) -> str:
+        v = v.strip().title()
+        return v
+
 
     @computed_field
     @property
