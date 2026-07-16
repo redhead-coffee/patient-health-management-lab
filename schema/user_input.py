@@ -1,9 +1,6 @@
 from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Literal, Annotated
-
-
-tier_1_cities = ['southwest','southeast']
-tier_2_cities = ['northwest','northeast']
+from config.city_tier import tier_1_cities, tier_2_cities
 
 #pydantic model to validate the input data
 #as per model training dataset 	age	sex	bmi	children	smoker	region
